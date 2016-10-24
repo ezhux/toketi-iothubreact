@@ -56,6 +56,9 @@ private class IoTMessageSource() extends GraphStage[SourceShape[IoTMessage]] wit
 
   case object TimeOffset extends OffsetType
 
+  private[this] val PauseBetweenReceiveAttempts        = 1 second
+  private[this] val PauseBetweenCreateReceiverAttempts = 2 seconds
+
   // When retrieving messages, include the message with the initial offset
   private[this] val OffsetInclusive = true
 
@@ -124,7 +127,7 @@ private class IoTMessageSource() extends GraphStage[SourceShape[IoTMessage]] wit
 
         override def onPull(): Unit = {
           try {
-            val messages = Retry(2, 1 seconds) {
+            val messages = Retry(2, PauseBetweenReceiveAttempts) {
               receiver.receiveSync(Configuration.receiverBatchSize)
             }
 
@@ -147,7 +150,7 @@ private class IoTMessageSource() extends GraphStage[SourceShape[IoTMessage]] wit
         *
         * @return IoT hub storage receiver
         */
-      def getIoTHubReceiver: PartitionReceiver = Retry(3, 2 seconds) {
+      def getIoTHubReceiver: PartitionReceiver = Retry(3, PauseBetweenCreateReceiverAttempts) {
         offsetType match {
           case SequenceOffset ⇒ {
             log.info(s"Connecting to partition ${partition.toString} starting from offset '${offset}'")

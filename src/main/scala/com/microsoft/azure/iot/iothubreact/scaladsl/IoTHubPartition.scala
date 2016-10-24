@@ -46,6 +46,8 @@ object IoTHubPartition extends Logger {
   */
 class IoTHubPartition(val partition: Int) extends Logger {
 
+  private[this] val PauseBetweenGetSavedOffsetAttempts = 5 seconds
+
   /** Stream returning all the messages. If checkpointing is enabled in the global configuration
     * then the stream starts from the last position saved, otherwise it starts from the beginning.
     *
@@ -177,7 +179,7 @@ class IoTHubPartition(val partition: Int) extends Logger {
     val partitionCp = CheckpointActorSystem.getCheckpointService(partition)
     implicit val rwTimeout = Timeout(CPConfiguration.checkpointRWTimeout)
     try {
-      Retry(3, 5 seconds) {
+      Retry(3, PauseBetweenGetSavedOffsetAttempts) {
         log.debug(s"Loading the stream position for partition ${partition}")
         val future = (partitionCp ? GetOffset).mapTo[String]
         Await.result(future, rwTimeout.duration)

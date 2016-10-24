@@ -17,6 +17,9 @@ import scala.language.{implicitConversions, postfixOps}
 
 private[iothubreact] class AzureBlob extends CheckpointBackend with Logger {
 
+  private[this] val PauseBetweenContainerCreationAttempts     = 5 seconds
+  private[this] val PauseBetweenGetBlockBlobReferenceAttempts = 2 seconds
+
   // Set the account to point either to Azure or the emulator
   val account: CloudStorageAccount = if (Configuration.azureBlobEmulator)
     CloudStorageAccount.getDevelopmentStorageAccount()
@@ -28,7 +31,7 @@ private[iothubreact] class AzureBlob extends CheckpointBackend with Logger {
   // Set the container, ensure it's ready
   val container = client.getContainerReference(checkpointNamespace)
   try {
-    Retry(2, 5 seconds) {
+    Retry(2, PauseBetweenContainerCreationAttempts) {
       container.createIfNotExists()
     }
   } catch {
@@ -93,7 +96,7 @@ private[iothubreact] class AzureBlob extends CheckpointBackend with Logger {
 
   private[this] def getBlockBlobReference(partition: Int): CloudBlockBlob = {
     try {
-      Retry(2, 2 seconds) {
+      Retry(2, PauseBetweenGetBlockBlobReferenceAttempts) {
         container.getBlockBlobReference(filename(partition))
       }
     } catch {
