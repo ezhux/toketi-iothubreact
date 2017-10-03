@@ -6,7 +6,7 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 
 private[iothubreact] class StreamManager[A]
-  extends GraphStage[FlowShape[A, A]] {
+  extends GraphStage[FlowShape[A, A]] with Logger {
 
   private[this] val in          = Inlet[A]("StreamCanceller.Flow.in")
   private[this] val out         = Outlet[A]("StreamCanceller.Flow.out")
@@ -26,11 +26,19 @@ private[iothubreact] class StreamManager[A]
       setHandler(out, new OutHandler {
         override def onPull(): Unit = {
           if (closeSignal) {
+            log.info("Tadas: cancelling stream")
             cancel(in)
           } else {
             pull(in)
           }
         }
+
+        override def onDownstreamFinish(): Unit = {
+          log.info("Tadas: onDownstreamFinish")
+          cancel(in)
+          super.onDownstreamFinish()
+        }
+
       })
     }
   }
